@@ -9,7 +9,7 @@ class pomodoro:
         self.pomodoroLength = 25
         self.shortBreakLength = 1
         self.longBreakLength = 15
-        self.pomodoroInGroup = 4
+        self.pomodorosInGroup = 4
         self.pomodoroCount = 0
         self.timerSec = self.pomodoroLength*60
 
@@ -17,8 +17,10 @@ class pomodoro:
         self.initialStartTime = 0
 
         self.timerOn = False
-        self.autoPlay = True
+        self.autoplay = True
+        self.settingsOpen = False
         self.timerState = 'POMODORO'
+        self.notificationSound = ''
 
         # Initializing mainframe and title
         self.parent = parent
@@ -54,7 +56,7 @@ class pomodoro:
 
         # Creating and placing timerFrame widgets
         self.timerLabelVar = StringVar(); self.timerLabelVar.set("{}:00".format(self.pomodoroLength))
-        self.focusLabelVar = StringVar()
+        self.focusLabelVar = StringVar(); self.focusLabelVar.set("100% Focus")
         self.pomodoroCountLabelVar = StringVar(); self.pomodoroCountLabelVar.set("1 (1)")
 
         self.settingsButton = ttk.Button(self.timerFrame, text='Settings', style='TimerFrame.TButton', command=self.open_settings)
@@ -97,13 +99,70 @@ class pomodoro:
         self.startstopButton.configure(text='Start Timer', command=self.start_timer)
         self.timerLabelVar.set("{}:00".format(self.pomodoroLength))
         self.pomodoroCount = 0
-        self.pomodoroCountLabelVar.set("{}({})".format(int(self.pomodoroCount/self.pomodoroInGroup) + 1, self.pomodoroCount%self.pomodoroInGroup + 1))
+        self.pomodoroCountLabelVar.set("{}({})".format(int(self.pomodoroCount/self.pomodorosInGroup) + 1, self.pomodoroCount%self.pomodorosInGroup + 1))
         self.timeRan = 0
         self.initialStartTime= 0
         self.focusLabelVar.set("100% Focus")
 
     def open_settings(self):
-        pass
+        #helper functions
+        def close_window():
+            self.settingsOpen = False
+            self.settingsWindow.destroy()
+            self.settingsWindow.update()
+            self.settingsWindow = None
+
+        def save_settings():
+            self.pomodoroLength = int(pomodoroLength.get())
+            self.shortBreakLength = int(shortBreakLength.get())
+            self.longBreakLength = int(longBreakLength.get())
+            self.pomodorosInGroup = int(pomodorosInGroup.get())
+            self.autoplay = False if autoplay.get() == 'F' else True
+            self.notificationSound = notificationSound.get()
+            self.reset_timer()
+            close_window()
+
+        if self.settingsOpen: close_window()
+        self.settingsOpen = True
+        self.settingsWindow = Toplevel(self.parent)
+        self.settingsWindow.title("Settings")
+        self.settingsWindow.resizable(False, False)
+
+        # Creating mainframe
+        self.settingsMainframe = ttk.Frame(self.settingsWindow)
+        self.settingsMainframe.grid(row=0,column=0,sticky="N E S W")
+
+        # Creating and placing timerFrame widgets
+        ttk.Label(self.settingsMainframe, text='Pomodoro Length').grid(row=0,column=0,sticky="W")
+        ttk.Label(self.settingsMainframe, text='Short Break Length').grid(row=1,column=0,sticky="W")
+        ttk.Label(self.settingsMainframe, text='Long Break Length').grid(row=2,column=0,sticky="W")
+        ttk.Label(self.settingsMainframe, text='Pomodoro\'s in Group').grid(row=3,column=0,sticky="W")
+        ttk.Label(self.settingsMainframe, text='Autoplay').grid(row=4,column=0,sticky="W")
+        ttk.Label(self.settingsMainframe, text='Notification Sound').grid(row=5,column=0,sticky="W")
+
+        pomodoroLength = StringVar()
+        shortBreakLength = StringVar()
+        longBreakLength = StringVar()
+        pomodorosInGroup = StringVar()
+        autoplay = StringVar()
+        notificationSound = StringVar()
+
+        ttk.Spinbox(self.settingsMainframe, from_=1, to=120, textvariable=pomodoroLength).grid(row=0,column=1)
+        ttk.Spinbox(self.settingsMainframe, from_=1, to=30, textvariable=shortBreakLength).grid(row=1,column=1)
+        ttk.Spinbox(self.settingsMainframe, from_=1, to=60, textvariable=longBreakLength).grid(row=2,column=1)
+        ttk.Spinbox(self.settingsMainframe, from_=1, to=8, textvariable=pomodorosInGroup).grid(row=3,column=1)
+        ttk.Checkbutton(self.settingsMainframe, variable=autoplay, onvalue='T', offvalue='F').grid(row=4,column=1)
+        ttk.Combobox(self.settingsMainframe, textvariable=notificationSound).grid(row=5,column=1)
+
+        pomodoroLength.set(str(self.pomodoroLength))
+        shortBreakLength.set(str(self.shortBreakLength))
+        longBreakLength.set(str(self.longBreakLength))
+        pomodorosInGroup.set(str(self.pomodorosInGroup))
+        autoplay.set("T" if self.autoplay else "F")
+        notificationSound.set(self.notificationSound)
+
+        ttk.Button(self.settingsMainframe, text='Cancel', command=close_window).grid(row=6,column=0)
+        ttk.Button(self.settingsMainframe, text='Save Setings', command=save_settings).grid(row=6,column=1)
 
     def start_timer(self):
         self.startstopButton.configure(text='Pause Timer', command=self.pause_timer)
@@ -123,14 +182,14 @@ class pomodoro:
         if self.timerOn: self.timeRan += t.time() - self.startTime
         self.timerOn = False
         if self.timerState == 'POMODORO': self.pomodoroCount += 1
-        if self.timerState == 'POMODORO' and self.pomodoroCount%self.pomodoroInGroup != 0:
+        if self.timerState == 'POMODORO' and self.pomodoroCount%self.pomodorosInGroup != 0:
             self.timerState = 'SHORT BREAK'
             self.timerSec = self.shortBreakLength*60
             self.s.configure('TimerFrame.TFrame', background='spring green')
             self.s.configure('TimerFrame.TLabel', background='spring green')
             self.s.configure('TimerFrame.TButton', background='spring green')
             self.s.map('TimerFrame.TButton',background=[('active', 'pale green'),('pressed', 'pale green')])
-        elif self.timerState == 'POMODORO' and self.pomodoroCount%self.pomodoroInGroup == 0:
+        elif self.timerState == 'POMODORO' and self.pomodoroCount%self.pomodorosInGroup == 0:
             self.timerState = 'LONG BREAK'
             self.timerSec = self.longBreakLength*60
             self.s.configure('TimerFrame.TFrame', background='spring green')
@@ -146,11 +205,11 @@ class pomodoro:
             self.s.map('TimerFrame.TButton',background=[('active', 'light coral'),('pressed', 'coral')])
 
         self.timerLabelVar.set("{}:00".format(int(self.timerSec/60)))
-        self.pomodoroCountLabelVar.set("{}({})".format(int(self.pomodoroCount/self.pomodoroInGroup) + 1, self.pomodoroCount%self.pomodoroInGroup + 1))
+        self.pomodoroCountLabelVar.set("{}({})".format(int(self.pomodoroCount/self.pomodorosInGroup) + 1, self.pomodoroCount%self.pomodorosInGroup + 1))
         self.focusLabelVar.set("{}% Focus".format(round(100*(self.timeRan)/(t.time() - self.initialStartTime), 1)))
         self.startstopButton.configure(text='Start Timer', command=self.start_timer)
 
-        if self.autoPlay: self.start_timer()
+        if self.autoplay: self.start_timer()
 
     def timer(self):
         if self.timerOn:
