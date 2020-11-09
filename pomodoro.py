@@ -33,7 +33,7 @@ class pomodoro:
         self.autoplay = True
         self.settingsOpen = False
         self.timerState = 'POMODORO'
-        self.notificationSound = soundNames[0]
+        self.notificationSound = soundNames[5]
 
         # Initializing mainframe and title
         self.parent = parent
@@ -42,22 +42,25 @@ class pomodoro:
         # Initializing Styles
         self.s = ttk.Style()
         self.s.theme_use('clam')
-        self.s.configure('.')
+        self.s.configure('.', font=('',16))
         self.s.map('.', highlightcolor=[], foreground=[], background=[('disabled', '#d9d9d9'), ('active', '#ececec')])
 
         self.s.configure('TimerFrame.TFrame', background='tomato')
-        self.s.configure('TimerFrame.TLabel', background='tomato')
-        self.s.configure('TimerFrame.TButton', background='tomato', highlightthickness=0)
+        self.s.configure('TimerFrame.TLabel', background='tomato', font=('',24))
+        self.s.configure('TimerFrame.TButton', background='tomato', highlightthickness=0, font=('',24))
         self.s.map('TimerFrame.TButton',background=[('active', 'light coral'),('pressed', 'coral')])
-        self.s.configure('Timer.TimerFrame.TLabel', font=('',72))
+        self.s.configure('Timer.TimerFrame.TLabel', font=('',144))
 
-        self.s.configure('TaskFrame.TFrame', background='grey')
-        self.s.configure('TaskFrame.TLabel', background='grey')
+        self.s.configure('TaskFrame.TFrame', background='ivory3')
+        self.s.configure('TaskFrame.TLabel', background='ivory3')
 
-        self.s.configure('Task.TaskFrame.TLabel', background='grey')
-        self.s.configure('Task.TaskFrame.TCheckbutton', background='grey')
-        self.s.configure('Task.TaskFrame.TEntry', background='grey', fieldbackground='grey', borderwidth=0)
-        self.s.configure('Task.TaskFrame.TMenubutton', background='grey')
+        self.s.configure('Task.TaskFrame.TLabel', background='ivory3')
+        self.s.configure('Task.TaskFrame.TCheckbutton', background='ivory3')
+        self.s.configure('Task.TaskFrame.TEntry', background='ivory3', fieldbackground='ivory3', borderwidth=0)
+        self.s.configure('Task.TaskFrame.TMenubutton', background='ivory3')
+
+        self.s.configure('DoneFrame.TFrame', background='thistle3')
+        self.s.configure('DoneFrame.TLabel', background='thistle3')
 
         # Creating mainframe
         self.mainframe = ttk.Frame(parent)
@@ -112,12 +115,15 @@ class pomodoro:
         #self.scheduleButton.grid(row=1,column=2,sticky='EW')
         self.taskListFrame.grid(row=2,column=0,columnspan=2,sticky='NESW')
 
+        self.taskEntry.bind('<Return>', lambda e : self.addTaskButton.invoke())
+
         # Creating and placing doneFrame widgets
         self.doneLabelVar = StringVar(); self.doneLabelVar.set('Complete : 0')
 
         self.doneLabel = ttk.Label(self.doneFrame, textvariable=self.doneLabelVar, style='DoneFrame.TLabel')
         self.doneListFrame= ttk.Frame(self.doneFrame, style='DoneFrame.TFrame')
-        self.doneListFrame.grid(row=0,column=0,sticky='NESW')
+        self.doneLabel.grid(row=0,column=0,sticky='EW')
+        self.doneListFrame.grid(row=1,column=0,sticky='NESW')
         self.doneCount= 0
         self.doneList = []
 
@@ -148,9 +154,21 @@ class pomodoro:
         self.taskListFrame.columnconfigure(0,weight=1,minsize=200)
 
         self.doneFrame.columnconfigure(0,weight=1)
-        self.doneFrame.rowconfigure(0,weight=1)
+        self.doneFrame.rowconfigure(0,weight=0)
+        self.doneFrame.rowconfigure(1,weight=1)
         self.doneListFrame.columnconfigure(0,weight=1,minsize=200)
 
+        # Bind keys
+        self.parent.bind('<space>', lambda e : self.handle_space_event())
+        self.parent.bind('<Shift-space>', lambda e : self.handle_shift_space_event())
+
+    def handle_space_event(self):
+        if not(isinstance(self.parent.focus_get(),ttk.Entry)):
+            self.startstopButton.invoke()
+
+    def handle_shift_space_event(self):
+        if not(isinstance(self.parent.focus_get(),ttk.Entry)):
+            self.skipButton.invoke()
 
     def reset_timer(self):
         self.timerOn = False
@@ -233,6 +251,7 @@ class pomodoro:
         self.startTime = t.time()
         if self.initialStartTime == 0:
             self.initialStartTime = self.startTime
+        #self.parent.bind('<Space>', self.pause_timer())
         self.mainframe.after(0,self.timer)
 
     def pause_timer(self):
@@ -240,6 +259,7 @@ class pomodoro:
         self.timerOn = False
         self.timeRan += t.time() - self.startTime
         self.timerSec -= t.time() - self.startTime
+        #self.parent.bind('<Space>', self.start_timer())
 
     def skip_timer(self):
         if self.timerOn: self.timeRan += t.time() - self.startTime
@@ -252,7 +272,6 @@ class pomodoro:
                     task['time'] += self.pomodoroLength
                     task['pomodoros'] += 1
                     task['time taken'].set('  ({}) {}h {}m  '.format(task['pomodoros'], int(task['time']/60), task['time']%60))
-
 
         if self.timerState == 'POMODORO' and self.pomodoroCount%self.pomodorosInGroup != 0:
             self.timerState = 'SHORT BREAK'
@@ -280,6 +299,7 @@ class pomodoro:
         self.pomodoroCountLabelVar.set("{}({})".format(int(self.pomodoroCount/self.pomodorosInGroup) + 1, self.pomodoroCount%self.pomodorosInGroup + 1))
         self.focusLabelVar.set("{}% Focus".format(round(100*(self.timeRan)/(t.time() - self.initialStartTime), 1)))
         self.startstopButton.configure(text='Start Timer', command=self.start_timer)
+        #self.parent.bind('<Space>', self.start_timer())
 
         play_sound(self.notificationSound)
 
@@ -302,6 +322,7 @@ class pomodoro:
                 self.mainframe.after(200,self.timer)
 
     def add_task(self):
+        if self.taskEntryVar.get() == '': return
         self.taskList.append({})
         self.taskList[-1]['base frame'] = ttk.Frame(self.taskListFrame, style='Task.TaskFrame.TFrame') # frame
         self.taskList[-1]['checkbox'] = StringVar() # checkbox var
@@ -352,21 +373,23 @@ class pomodoro:
 
     def complete_task(self, index):
         self.taskList[index]['base frame'].grid_forget()
-        baseFrame = ttk.Frame(self.doneListFrame, style='Done.DoneListFrame.TFrame')
+        baseFrame = ttk.Frame(self.doneListFrame, style='DoneListFrame.TFrame')
         self.doneList.append(baseFrame)
         self.doneList[-1].grid(row=self.doneCount, column=0,sticky='EW')
 
-        ttk.Label(self.doneList[-1], text=self.taskList[index]['name'].get(), style='Task.DoneFrame.TLabel').grid(row=0,column=0,sticky='W')
-        ttk.Label(self.doneList[-1], text=self.taskList[index]['time taken'].get(), style='Task.DoneFrame.TLabel').grid(row=0,column=1,sticky='E')
+        ttk.Label(self.doneList[-1], text=self.taskList[index]['name'].get(), style='DoneFrame.TLabel').grid(row=0,column=0,sticky='WE')
+        ttk.Label(self.doneList[-1], text=self.taskList[index]['time taken'].get(), style='DoneFrame.TLabel').grid(row=0,column=1,sticky='E')
 
         self.doneListFrame.rowconfigure(self.doneCount,weight=0)
 
         self.doneList[-1].columnconfigure(0,weight=1,minsize=150)
         self.doneList[-1].columnconfigure(1,weight=0,minsize=50)
 
-        self.doneCount+= 1
+        self.doneCount += 1
+        self.taskCount -= 1
 
-        self.doneLabelVar.set('Comeplete: {}'.format(self.taskCount))
+        self.doneLabelVar.set('Complete: {}'.format(self.doneCount))
+        self.taskLabelVar.set('Tasks: {}'.format(self.taskCount))
 
     #def open_schedule(self):
     #    pass
